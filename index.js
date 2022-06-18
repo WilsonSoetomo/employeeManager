@@ -110,7 +110,14 @@ inquire.prompt({
     });
   });  
 }
-function addRole() {
+async function addRole() {
+let departments;
+// await connection
+//   .promise()
+//   .query(`SELECT * FROM department`).then(([res])=>{
+//     console.log(res)
+//     departments = res
+//   })
 inquire.prompt([{
   name: "addRole",
   type: "input",
@@ -125,13 +132,11 @@ inquire.prompt([{
   name: "addDid",
   type: "list",
   message: "What department is this role for?",
-  choices: ()=>{
-    connection
+  choices: async () => {
+    const [res] = await connection
     .promise()
-    .query(`SELECT * FROM department`).then(([res])=>{
-      console.log(res)
-      return res
-    })
+    .query(`SELECT * FROM department`);
+    return res.map(a => ({name: a.name, value:a.id}))
   }
 }]).then(({ addRole })=>{
   connection
