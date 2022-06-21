@@ -1,10 +1,11 @@
 const { response } = require("express");
+const inquirer = require("inquirer");
 const inquire = require("inquirer");
 const connection = require("./connection");
 require("console.table");
 
 // THEN I am presented with the following options: view all departments, view all roles, view all employees, add a department, add a role, add an employee, and update an employee role
-askUser();
+// askUser();
 function askUser() {
   inquire
     .prompt([
@@ -93,64 +94,94 @@ function viewAllEmployee() {
     });
 }
 function addDepartment() {
-inquire.prompt({
-  name: "addDepartment",
-  type: "input",
-  message: "What department would you like to add?",
-}).then(({ addDepartment })=>{
-  connection
-    .promise()
-    .query(`INSERT INTO department (name) VALUES ("${addDepartment}")`)
-    .then(([res]) => {
-      console.log("\n");
-      console.log("Department added!");
+  inquire
+    .prompt({
+      name: "addDepartment",
+      type: "input",
+      message: "What department would you like to add?",
     })
-    .then(() => {
-      askUser();
+    .then(({ addDepartment }) => {
+      connection
+        .promise()
+        .query(`INSERT INTO department (name) VALUES ("${addDepartment}")`)
+        .then(([res]) => {
+          console.log("\n");
+          console.log("Department added!");
+        })
+        .then(() => {
+          askUser();
+        });
     });
-  });  
 }
 async function addRole() {
-let departments;
-// await connection
-//   .promise()
-//   .query(`SELECT * FROM department`).then(([res])=>{
-//     console.log(res)
-//     departments = res
-//   })
-inquire.prompt([{
-  name: "addRole",
-  type: "input",
-  message: "What Role would you like to add?",
-},
-{
-  name: "addSalary",
-  type: "input",
-  message: "What is the salary of the role?",
-},
-{
-  name: "addDid",
-  type: "list",
-  message: "What department is this role for?",
-  choices: async () => {
-    const [res] = await connection
-    .promise()
-    .query(`SELECT * FROM department`);
-    return res.map(a => ({name: a.name, value:a.id}))
-  }
-}]).then(({ addRole })=>{
-  connection
-    .promise()
-    .query(`INSERT INTO role (title, salary, department_id) VALUES ("${addRole}",salary,)`)
-    .then(([res]) => {
-      console.log("\n");
-      console.log("Department added!");
-    })
-    .then(() => {
-      askUser();
+  let departments;
+
+  inquire
+    .prompt([
+      {
+        name: "addRole",
+        type: "input",
+        message: "What Role would you like to add?",
+      },
+      {
+        name: "addSalary",
+        type: "input",
+        message: "What is the salary of the role?",
+      },
+      {
+        name: "addDid",
+        type: "list",
+        message: "What department is this role for?",
+        choices: () => {
+          return connection
+            .promise()
+            .query(`SELECT * FROM department`)
+            .then(([res]) => {
+              console.log("before mapping", res);
+              const mapped = res.map((a) => ({ name: a.name, value: a.id }));
+              console.log("after mapping", mapped);
+              return mapped;
+            });
+          // return res.map(a => ({name: a.name, value:a.id}))
+        },
+      },
+    ])
+    .then(({ addRole, addSalary, addDid }) => {
+      connection
+        .promise()
+        .query(
+          `INSERT INTO role (title, salary, department_id) VALUES ("${addRole}",${addSalary},${addDid})`
+        )
+        .then(([res]) => {
+          console.log("\n");
+          console.log("Department added!");
+        })
+        .then(() => {
+          askUser();
+        });
     });
-  });  
 }
+
+async function deleteEmployee() {
+  //get all employees first to list as choices when deleting
+  const [res] = await connection.promise().query("SELECT * FROM employee");
+  const {id} = await inquirer.prompt({
+    message: "which user to delete?",
+    type: "list",
+    name: "id",
+    choices: res.map((a) => ({
+      name: `${a.first_name} ${a.last_name}`,
+      value: a.id,
+    })),
+  });
+  console.log("you chose --- ", id);
+
+  await connection.promise().query(`DELETE FROM employee WHERE id=${id}`);
+  console.log("you deleted a employee");
+  askUser()
+}
+
+deleteEmployee();
 
 // GIVEN a command-line application that accepts user input
 // WHEN I start the application
