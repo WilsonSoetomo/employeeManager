@@ -5,7 +5,7 @@ const connection = require("./connection");
 require("console.table");
 
 // THEN I am presented with the following options: view all departments, view all roles, view all employees, add a department, add a role, add an employee, and update an employee role
-// askUser();
+askUser();
 function askUser() {
   inquire
     .prompt([
@@ -20,6 +20,7 @@ function askUser() {
           "add a department",
           "add a role",
           "add an employee",
+          "delete an employee",
           "update an employee role",
           "finish",
         ],
@@ -44,10 +45,13 @@ function askUser() {
           addRole();
           break;
         case "add an employee":
-          alert("You typed in a 4");
+          addEmployee();
+          break;
+        case "delete an employee":
+          deleteEmployee();
           break;
         case "update an employee role":
-          alert("You typed in a 4");
+          updateEmployee();
           break;
         case "finish":
           console.log("Good Bye");
@@ -180,8 +184,87 @@ async function deleteEmployee() {
   console.log("you deleted a employee");
   askUser()
 }
+async function addEmployee() {
+  const [res] = await connection.promise().query("SELECT * FROM employee");
+  const [roles_res] = await connection.promise().query("SELECT * FROM role");
+  const managers = res.map((a) => ({
+    name: `${a.first_name} ${a.last_name}`,
+    value: a.id,
+  }))
+  const roles = roles_res.map((a) => ({
+    name: `${a.title}`,
+    value: a.id,
+  }))
+  //get all employees first to list as choices when deleting
+  // const [res] = await connection.promise().query("SELECT * FROM employee");
+  // const {id} = await inquirer.prompt({
+  //   message: "which employee to add?",
+  //   type: "input",
+  //   name: "id",
+  //   choices: res.map((a) => ({
+  //     name: `${a.first_name} ${a.last_name}`,
+  //     value: a.id,
+  //   })),
+  // }
+  const answers = await inquirer.prompt([
+    {
+      message: "What is the new employee's first name?",
+      name: "first_name",
+      type:"input"
+    },
+    {
+      message: "What is the new employee's last name?",
+      name: "last_name",
+      type:"input"
+    },
+    {
+      message: "What is the new employee's role id?",
+      name: "role_id",
+      type:"list",
+      choices: roles
+    },
+    {
+      message: "What is the new employee's manager?",
+      name: "manager_id",
+      type:"list",
+      choices: managers
+    },
+  ])
+  console.log("you chose --- ", answers.managerId);
 
-deleteEmployee();
+  await connection.promise().query(`INSERT INTO employee SET ?`, answers);
+  console.log("you added an employee");
+  askUser()
+}
+async function updateEmployee() {
+  //get all employees first to list as choices when deleting
+  const [res] = await connection.promise().query("SELECT * FROM employee");
+  const [role] = await connection.promise().query("SELECT * FROM role");
+  const {id} = await inquirer.prompt({
+    message: "which employee's role would you like to change?",
+    type: "list",
+    name: "id",
+    choices: res.map((a) => ({
+      name: `${a.first_name} ${a.last_name}`,
+      value: a.id,
+    })),
+  });
+  const {roleid} = await inquirer.prompt({
+    message: "what role do you want to give the employee?",
+    type: "list",
+    name: "roleid",
+    choices: role.map((a) => ({
+      name: `${a.title}`,
+      value: a.id,
+    })),
+  });
+  console.log("you chose --- ", id);
+
+  await connection.promise().query(`UPDATE employee SET role_id = ${roleid} WHERE id=${id}`);
+  console.log("you added an employee");
+  askUser()
+}
+
 
 // GIVEN a command-line application that accepts user input
 // WHEN I start the application
